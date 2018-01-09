@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser( description="This script creates a rss-podcast
 parser.add_argument( "-i", "--input_href", help="Input podcast rss address", required=True) 
 parser.add_argument( "-p", "--podcast_name", help="Local pocast name", required=True, default=None ) 
 parser.add_argument( "-n", "--new_href", help="New base-href", required=True, default=None) 
+parser.add_argument( "--oldest_pod", help="How old files to download (in days). Default 365 days", type=int, required=False, default=None) 
 parser.add_argument( "--DOWNLOAD_ALL", help="Download all podcasts (default 1 year)", required=False, action='store_true' ) 
 parser.add_argument( "--TEST", help="If this is used, only 10 files will be downloaded", required=False, action='store_true' ) 
 
@@ -26,9 +27,12 @@ pod_name = args["podcast_name"]
 pod_real_href = args["input_href"]
 test_mode = args["TEST"]
 download_all = args["DOWNLOAD_ALL"]
-
 time_threshold = 60*60*24-100
-oldest_pod = 365 #days
+
+if( args["oldest_pod"] is None ) :
+	oldest_pod = 365 #days
+else :
+	oldest_pod = args["oldest_pod"]
 
 def uglyfix( input_path ) :	
 	thefile = io.open( input_path, mode="r", encoding="utf-8")
@@ -157,7 +161,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		mp3link.set( "url", newlink )
 	
 		if( not os.path.isfile( local_path ) ) :
-			# download_file( oldlink, local_path )  
+			download_file( oldlink, local_path )  
 			logmess( "downloading " + link_basename, log_file )
 			time.sleep( 1 )
 		else :
