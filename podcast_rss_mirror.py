@@ -7,6 +7,7 @@ import argparse
 # import wget
 import urllib.request
 
+from subprocess import call
 from xml.etree import ElementTree as ET
 
 parser = argparse.ArgumentParser( description="This script creates a rss-podcast mirror on your local server") 
@@ -38,7 +39,9 @@ def logmess( message, log_file_obj, lastlog = False ) :
 		log_file_obj.close()
 
 def download_file( input, output ) :
-	urllib.request.urlretrieve( input, output )
+	# urllib.request.urlretrieve( input, output )
+	call( ["wget", input, "-O", output] )
+	
 		
 def create_pod_mirror( rss_href, podname, new_base_href ) :
 
