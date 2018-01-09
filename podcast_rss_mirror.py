@@ -1,9 +1,11 @@
 import os
 import sys
-import wget
 import time
 import datetime
 import argparse
+
+# import wget
+import urllib.request
 
 from xml.etree import ElementTree as ET
 
@@ -35,6 +37,9 @@ def logmess( message, log_file_obj, lastlog = False ) :
 	if( lastlog ) : 
 		log_file_obj.close()
 
+def download_file( input, output ) :
+	urllib.request.urlretrieve( input, output )
+		
 def create_pod_mirror( rss_href, podname, new_base_href ) :
 
 	now_time = time.time()
@@ -63,7 +68,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	
 	tmp_podcast_rss = os.path.join( script_dir, pod_name + "_rss.tmp" )
 	
-	wget.download( pod_real_href, tmp_podcast_rss )
+	download_file( pod_real_href, tmp_podcast_rss )
 	rss_tree = ET.parse( tmp_podcast_rss )
 	os.remove( tmp_podcast_rss )
 	
@@ -93,7 +98,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		mp3link.text = newlink
 		
 		if( not os.path.isfile( local_path ) ) :
-			wget.download( oldlink, local_path )  
+			download_file( oldlink, local_path )  
 			logmess( "downloading " + link_basename, log_file )
 			time.sleep( 1 )
 		else :
