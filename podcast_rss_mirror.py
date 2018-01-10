@@ -211,7 +211,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	
 	# Write the new RSS-feed
 	rss_tree.write( local_pod_rss, encoding="UTF-8", xml_declaration=True )
-	
+
 	logmess( "Finished mirroring " + rss_href, log_file, True )
 
 
