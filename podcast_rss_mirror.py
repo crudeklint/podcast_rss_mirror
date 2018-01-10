@@ -176,7 +176,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	
 	rss_tree.write( local_pod_rss, encoding="UTF-8", xml_declaration=True )
 	
-	uglyfix( local_pod_rss )
+	# uglyfix( local_pod_rss )
 	logmess( "Finished mirroring " + rss_href, log_file, True )
 
 create_pod_mirror( pod_real_href, pod_name, newhref )
