@@ -144,6 +144,8 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	# This counter is used if the test-flag is set.
 	i=0
 	
+	no_exists_skipped = 0
+	
 	# This is only used for not spamming the log with skipped files.
 	do_log = True
 	
@@ -182,7 +184,6 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		# If the time delta is too large, add this episode to the remove-list.
 		if( time_delta.days > oldest_pod ) :
 			delete_list.append( child )
-			logmess( link_basename + " too old. deleting from rss" , log_file )
 			continue
 
 		# Create the new web address and the os path for the mp3-files.
@@ -198,7 +199,8 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 			logmess( "downloading " + link_basename, log_file )
 			time.sleep( 1 )
 		else :
-			logmess( "skipping " + link_basename + ", already exists", log_file )
+			no_exists_skipped += 1
+			
 
 	# Remove the unwanted episodes from the feed.
 	for deletechild in delete_list:
@@ -212,6 +214,12 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	# Write the new RSS-feed
 	rss_tree.write( local_pod_rss, encoding="UTF-8", xml_declaration=True )
 
+	if( len( delete_list ) > 0 ):
+		logmess( "Skipped " + str( len( delete_list ) ) + " episodes that were older than " + str( oldest_pod ) + " days", log_file )
+
+	if( no_exists_skipped > 0 ):
+		logmess( "Skipped " + str( no_exists_skipped ) + " episodes that already exists on disk", log_file )
+		
 	logmess( "Finished mirroring " + rss_href, log_file, True )
 
 
