@@ -75,6 +75,9 @@ def download_file( input, output, username=None, password=None ) :
 # Main function.
 def create_pod_mirror( rss_href, pod_name, new_base_href, oldest_pod=365, username=None, password=None, test_mode=False ) :
 
+	# Hardcoded time threshold for a little less than a day.
+	time_threshold = 60*60*24-100
+
 	# This list contains the episodes which will be removed from
 	# the main feed.
 	delete_list = []
@@ -234,9 +237,6 @@ def main():
 	test_mode = args["TEST"]
 	password = args["password"]
 	username = args["username"]
-
-	# Hardcoded time threshold for a little less than a day.
-	time_threshold = 60*60*24-100
 
 	if( args["oldest_pod"] is None ) :
 		oldest_pod = 365 #days
