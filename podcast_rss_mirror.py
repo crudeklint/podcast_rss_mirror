@@ -34,33 +34,11 @@ import os
 import sys
 import time
 import argparse
+import requests
 
 from datetime import datetime
 from subprocess import call
 from xml.etree import ElementTree as ET
-
-# Create the input parameters using argparse
-parser = argparse.ArgumentParser( description="This script creates a rss-podcast mirror on your local server") 
-parser.add_argument( "-i", "--input_href", help="Input podcast rss address", required=True) 
-parser.add_argument( "-p", "--podcast_name", help="Local pocast name", required=True, default=None ) 
-parser.add_argument( "-n", "--new_href", help="New base-href", required=True, default=None) 
-parser.add_argument( "--oldest_pod", help="How old files to download (in days). Default 365 days", type=int, required=False, default=None) 
-parser.add_argument( "--TEST", help="If this is used, only 10 files will be downloaded", required=False, action='store_true' ) 
-
-args = vars( parser.parse_args( ) ) 
-
-newhref = args["new_href"]
-pod_name = args["podcast_name"]
-pod_real_href = args["input_href"]
-test_mode = args["TEST"]
-
-# Hardcoded time threshold for a little less than a day.
-time_threshold = 60*60*24-100
-
-if( args["oldest_pod"] is None ) :
-	oldest_pod = 365 #days
-else :
-	oldest_pod = args["oldest_pod"]
 
 # Simple loggin function
 def logmess( message, log_file_obj, lastlog = False ) :
@@ -78,13 +56,24 @@ def logmess( message, log_file_obj, lastlog = False ) :
 
 # Function to download files. This may not be the best choice
 # but it works with my web host.
-def download_file( input, output ) :
+def download_file( input, output, username=None, password=None ) :
 	# urllib.request.urlretrieve( input, output )
-	call( ["wget", input, "-O", output] )
+	# call( ["wget", input, "-O", output] )
 	
+	if( not( username and password ) ):
+		call( ["wget", input, "-O", output] )
+	else:
+		r = requests.get( input, auth=(username, password) )
+	
+		if r.status_code == 200:
+			with open( output, 'wb' ) as out:
+				for bits in r.iter_content():
+					out.write( bits )
+
+	return
 
 # Main function.
-def create_pod_mirror( rss_href, podname, new_base_href ) :
+def create_pod_mirror( rss_href, pod_name, new_base_href, oldest_pod=365, username=None, password=None, test_mode=False ) :
 
 	# This list contains the episodes which will be removed from
 	# the main feed.
@@ -134,7 +123,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	
 	# Download the real RSS to the temporary path. Parse it using
 	# ElementTree and remove the temporary file.
-	download_file( pod_real_href, tmp_podcast_rss )
+	download_file( rss_href, tmp_podcast_rss, username, password )
 	rss_tree = ET.parse( tmp_podcast_rss )
 	os.remove( tmp_podcast_rss )
 
@@ -158,7 +147,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		
 		# If test mode is set and the number of files are reached, 
 		# continue the loop.
-		if( i > 10 and test_mode ) :
+		if( i > 3 and test_mode ) :
 			delete_list.append( child )
 			if( do_log ) : 
 				logmess( "Test mode, exiting.", log_file )
@@ -171,7 +160,11 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		datestring = pub_date.text
 		
 		# Parse the time string to a time-object and calculate the time delta.
-		date_obj = datetime.strptime(datestring, "%a, %d %b %Y %H:%M:%S %Z")
+		date_obj = datetime.strptime(datestring, "%a, %d %b %Y %H:%M:%S %z")
+
+		# Remove timezone info if there is any. Might be stupid...
+		date_obj = date_obj.replace( tzinfo=None )
+
 		time_delta = datetime.now() - date_obj
 
 		# Get the enclosure node which contains the mp3-link.
@@ -187,7 +180,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 			continue
 
 		# Create the new web address and the os path for the mp3-files.
-		newlink = os.path.join( newhref, pod_name, link_basename )
+		newlink = os.path.join( new_base_href, pod_name, link_basename )
 		local_path = os.path.join( local_pod_dir, link_basename )
 		
 		# Update the mp3-parameter to the new web address.
@@ -195,7 +188,7 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 	
 		# Check if the file already exists. If it does, skip this episode.
 		if( not os.path.isfile( local_path ) ) :
-			download_file( oldlink, local_path )  
+			download_file( oldlink, local_path, username, password )  
 			logmess( "downloading " + link_basename, log_file )
 			time.sleep( 1 )
 		else :
@@ -222,6 +215,35 @@ def create_pod_mirror( rss_href, podname, new_base_href ) :
 		
 	logmess( "Finished mirroring " + rss_href, log_file, True )
 
+def main():
+	# Create the input parameters using argparse
+	parser = argparse.ArgumentParser( description="This script creates a rss-podcast mirror on your local server") 
+	parser.add_argument( "-i", "--input_href", help="Input podcast rss address", required=True) 
+	parser.add_argument( "-p", "--podcast_name", help="Local pocast name", required=True, default=None ) 
+	parser.add_argument( "-n", "--new_href", help="New base-href", required=True, default=None)
+	parser.add_argument( "-unm", "--username", help="Username for auth", required=False, default=None)
+	parser.add_argument( "-pwd", "--password", help="Password for auth", required=False, default=None)
+	parser.add_argument( "--oldest_pod", help="How old files to download (in days). Default 365 days", type=int, required=False, default=None) 
+	parser.add_argument( "--TEST", help="If this is used, only 10 files will be downloaded", required=False, action='store_true', default=False ) 
 
-# MAIN ENTRY	
-create_pod_mirror( pod_real_href, pod_name, newhref )
+	args = vars( parser.parse_args( ) ) 
+
+	new_base_href = args["new_href"]
+	pod_name = args["podcast_name"]
+	pod_real_href = args["input_href"]
+	test_mode = args["TEST"]
+	password = args["password"]
+	username = args["username"]
+
+	# Hardcoded time threshold for a little less than a day.
+	time_threshold = 60*60*24-100
+
+	if( args["oldest_pod"] is None ) :
+		oldest_pod = 365 #days
+	else :
+		oldest_pod = args["oldest_pod"]
+	create_pod_mirror( pod_real_href, pod_name, new_base_href, oldest_pod, username, password, test_mode )
+	
+if( __name__ == "__main__" ):
+	main()
+
